@@ -5,7 +5,7 @@ import math
 import socket
 import threading
 
-
+# включать выключать музыку на ескейп описание на пкм выйти из описания лкм
 pygame.init()
 client_socket = None
 connecting = False
@@ -32,6 +32,8 @@ airpots_alive = False
 brbr_alive = False
 oleg_alive = False
 konus_alive = False
+settings_open = False
+music_on = True
 
 class Player:
     def __init__(self, x, y, width, height, images):
@@ -56,7 +58,7 @@ class Picture:
         self.image = pygame.image.load(filename)
         self.image = pygame.transform.scale(self.image, (width, height))
         self.rect = self.image.get_rect(topleft=(x, y))
-        self.hp = 3000
+        self.hp = 500
         self.alive = True
 
     def draw(self):
@@ -146,6 +148,7 @@ zagruska_krug = Player(450, 500, 150, 200, player_run)
 menu = Picture('fon.jpg', 0, 0, 1000, 1000)
 
 characters = [
+    Picture('brewmaster.png'),
     Picture('photo_2025-12-01_22-06-37.jpg'),
     Picture('nekit.jpg'),
     Picture('ykrgap.jpg'),
@@ -160,6 +163,7 @@ characters = [
 ]
 
 prices = {
+    "brewmaster.png": 8,
     "loxa.jpg": 8,
     "ykrgap.jpg": 5,
     "super_busa.jpg": 3,
@@ -173,11 +177,12 @@ prices = {
     "konys.jpg": 3
 }
 card_descriptions = {
+    "brewmaster": "пивний лев с тремя медведями, мой любимый.",
     "loxa.jpg": "Описание Лёхи\n\n лоха очень толстый и сильный.",
     "ykrgap.jpg": "Описание Юкргапа\n\n мало здоровя но неймоверная скорость атаки.",
     "super_busa.jpg": "Описание Бусы\n\n ультра быстрая бабушка которая купила крем для коленей.",
     "photo_2025-12-01_22-06-37.jpg": "Описание Сачура\n\n войн которий ждет свойго часа, очень загадочный.",
-    "bisektrisa.jpg": "Описание Бисектрисы\n\n кошка самоубица дух который ранше был земелей.",
+    "bisektrisa.jpg": "Описание Бисектрисы\n\n кошка самоубица дух который ранше был землей.",
     "nekit.jpg": "Описание Некита\n\n абсолютно не интересный персонаж с плохими характеристиками.",
     "escere.jpg": "Описание Эскере\n\n джокер после падения ешкерий ставит город гдебы то небыло и оппалюет свойх врагов.",
     "airpots.jpg": "Описание Аирпотса\n\n просто робот призваный служыть и ломать.",
@@ -273,7 +278,7 @@ def draw_description(card):
     title = font_title.render(card.image_name, True, (255,255,255))
     window.blit(title,(6000,7000))
 
-    text = card_descriptions.get(card.image_name,"Нет описания")
+    text = card_descriptions.get(card.image_name,"пивний лев с тремя медведями, мой любимый.")
 
     y = 700
     for line in text.split("\n"):
@@ -282,12 +287,17 @@ def draw_description(card):
         y += 40
 def spawn_unit(name, x, y, enemy=False):
     prefix = "enemy_" if enemy else ""
-
     if name == 'loxa.jpg':
         spawned_units.append(Unit(prefix + 'loxa', 'loxa-removebg-preview.png', x, y, 80, 80, 90, 8, 2, 1))
 
     elif name == 'ykrgap.jpg':
         spawned_units.append(Unit(prefix + 'ykrgap', 'ykrgap-removebg-preview.png', x, y, 70, 70, 30, 5, 2, 5))
+
+    elif name == 'brewmaster.png':
+        offset = 40
+        spawned_units.append(Unit(prefix + 'brewmaster', 'brew1.png', x - offset, y, 60, 60, 60, 6, 2, 1))
+        spawned_units.append(Unit(prefix + 'brewmaster', 'brew2.png', x + offset, y, 60, 60, 50, 8, 2, 1.2))
+        spawned_units.append(Unit(prefix + 'brewmaster', 'brew3.png', x, y - offset, 60, 60, 70, 4, 1, 0.8))
 
     elif name == 'super_busa.jpg':
         spawned_units.append(Unit(prefix + 'busa', 'super_busa-removebg-preview.png', x, y, 50, 50, 40, 5, 4, 0.8))
@@ -436,7 +446,7 @@ def play_music(track):
     if current_music != track:
         pygame.mixer.music.stop()
         pygame.mixer.music.load(track)
-        pygame.mixer.music.play(-1)
+        pygame.mixer.music.play(-2)
         current_music = track
 while running:
     while not net_queue.empty():
@@ -461,8 +471,17 @@ while running:
             running = False
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_ESCAPE:
-                show_description = None
+                settings_open = not settings_open
         if e.type == pygame.MOUSEBUTTONDOWN:
+            if settings_open:
+                mx, my = e.pos
+                if 450 < mx < 550 and 500 < my < 600:
+                    music_on = not music_on
+                    if music_on:
+                        pygame.mixer.music.set_volume(1)
+                    else:
+                        pygame.mixer.music.set_volume(0)
+                continue
             mx, my = e.pos
             if e.button == 3 and not arena_mode:
                 for pic in characters:
@@ -560,6 +579,11 @@ while running:
                         elif name == 'oleg.jpg':
                             spawned_units.append(Unit('oleg', 'oleg-removebg-preview.png', x, y, 70, 70, 50, 4, 2, 2))
                             oleg_alive = True
+                        elif name == 'brewmaster.png':
+                            offset = 40
+                            spawned_units.append(Unit('brewmaster', 'brew1.png', x - offset, y, 60, 60, 60, 6, 2, 1))
+                            spawned_units.append(Unit('brewmaster', 'brew2.png', x + offset, y, 60, 60, 50, 8, 2, 1.2))
+                            spawned_units.append(Unit('brewmaster', 'brew3.png', x, y - offset, 60, 60, 70, 4, 1, 0.8))
                         elif name == 'konys.jpg':
                             spawned_units.append(Unit('konus', 'konys-removebg-preview.png', x, y, 120, 120, 11, 5, 0, 10))
                             konus_alive = True
@@ -731,6 +755,17 @@ while running:
         my_targets = [mytl, mytr, tower_my]
 
         continue
+    if settings_open:
+        white = pygame.Surface((1000, 1000))
+        white.fill((255, 255, 255))
+        window.blit(white, (0, 0))
+
+        font = pygame.font.SysFont("Verdana", 60)
+        text = font.render("Музыка", True, (0, 0, 0))
+        window.blit(text, (350, 300))
+
+        color = (0, 255, 0) if music_on else (255, 0, 0)
+        pygame.draw.circle(window, color, (500, 550), 50)
     pygame.display.update()
     clock.tick(60)
 
