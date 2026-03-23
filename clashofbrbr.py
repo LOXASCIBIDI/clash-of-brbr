@@ -287,6 +287,7 @@ def draw_description(card):
         y += 40
 def spawn_unit(name, x, y, enemy=False):
     prefix = "enemy_" if enemy else ""
+
     if name == 'loxa.jpg':
         spawned_units.append(Unit(prefix + 'loxa', 'loxa-removebg-preview.png', x, y, 80, 80, 90, 8, 2, 1))
 
@@ -295,9 +296,30 @@ def spawn_unit(name, x, y, enemy=False):
 
     elif name == 'brewmaster.png':
         offset = 40
-        spawned_units.append(Unit(prefix + 'brewmaster', 'brew1.png', x - offset, y, 60, 60, 60, 6, 2, 1))
-        spawned_units.append(Unit(prefix + 'brewmaster', 'brew2.png', x + offset, y, 60, 60, 50, 8, 2, 1.2))
-        spawned_units.append(Unit(prefix + 'brewmaster', 'brew3.png', x, y - offset, 60, 60, 70, 4, 1, 0.8))
+        if enemy:
+            positions = [
+                ( x + offset, y ),
+                ( x - offset, y ),
+                ( x, y + offset )
+            ]
+        else:
+            positions = [
+                ( x - offset, y ),
+                ( x + offset, y ),
+                ( x, y - offset )
+            ]
+
+        images = ['brew1.png', 'brew2.png', 'brew3.png']
+        stats = [
+            (60, 6, 2, 1),
+            (50, 8, 2, 1.2),
+            (70, 4, 1, 0.8)
+        ]
+
+        for (px, py), img, (hp, dmg, spd, atkspd) in zip(positions, images, stats):
+            spawned_units.append(
+                Unit(prefix + 'brewmaster', img, px, py, 60, 60, hp, dmg, spd, atkspd)
+            )
 
     elif name == 'super_busa.jpg':
         spawned_units.append(Unit(prefix + 'busa', 'super_busa-removebg-preview.png', x, y, 50, 50, 40, 5, 4, 0.8))
@@ -549,44 +571,7 @@ while running:
                             msg = f"SPAWN {name} {x} {mirror_y}"
                             client_socket.send(msg.encode())
 
-                        if name == 'loxa.jpg':
-                            spawned_units.append(Unit('loxa', 'loxa-removebg-preview.png', x, y, 100, 100, 90, 8, 2, 1))
-                            loxa_alive = True
-                        elif name == 'ykrgap.jpg':
-                            spawned_units.append(Unit('ykrgap', 'ykrgap-removebg-preview.png', x, y, 70, 70, 30, 5, 2, 5))
-                            ykrgap_alive = True
-                        elif name == 'super_busa.jpg':
-                            spawned_units.append(Unit('busa', 'super_busa-removebg-preview.png', x, y, 50, 50, 40, 5, 4, 0.8))
-                            busa_alive = True
-                        elif name == 'photo_2025-12-01_22-06-37.jpg':
-                            spawned_units.append(Unit('sachur', 'photo_2025-12-01_22-06-37-removebg-preview.png', x, y, 70, 70, 55, 10, 2, 1))
-                            sachur_alive = True
-                        elif name == 'bisektrisa.jpg':
-                            spawned_units.append(Unit('bisek', 'bisektrisa-removebg-preview.png', x, y, 30, 30, 30, 5, 2, 1))
-                            bisek_alive = True
-                        elif name == 'nekit.jpg':
-                            spawned_units.append(Unit('hekit', 'nekit!.png', x, y, 50, 50, 45, 6, 2, 1))
-                            hekit_alive = True
-                        elif name == 'escere.jpg':
-                            spawned_units.append(Unit('escere', 'escere-removebg-preview.png', x, y, 70, 70, 70, 7, 0, 1))
-                            escere_alive = True
-                        elif name == 'airpots.jpg':
-                            spawned_units.append(Unit('airpots', 'airpots-removebg-preview.png', x, y, 70, 70, 95, 7, 2, 1))
-                            airpots_alive = True
-                        elif name == 'brbrpatapim.jpg':
-                            spawned_units.append(Unit('brbr', 'brbrpatapim-removebg-preview.png', x, y, 70, 70, 50, 10, 2, 1))
-                            brbr_alive = True
-                        elif name == 'oleg.jpg':
-                            spawned_units.append(Unit('oleg', 'oleg-removebg-preview.png', x, y, 70, 70, 50, 4, 2, 2))
-                            oleg_alive = True
-                        elif name == 'brewmaster.png':
-                            offset = 40
-                            spawned_units.append(Unit('brewmaster', 'brew1.png', x - offset, y, 60, 60, 60, 6, 2, 1))
-                            spawned_units.append(Unit('brewmaster', 'brew2.png', x + offset, y, 60, 60, 50, 8, 2, 1.2))
-                            spawned_units.append(Unit('brewmaster', 'brew3.png', x, y - offset, 60, 60, 70, 4, 1, 0.8))
-                        elif name == 'konys.jpg':
-                            spawned_units.append(Unit('konus', 'konys-removebg-preview.png', x, y, 120, 120, 11, 5, 0, 10))
-                            konus_alive = True
+                        spawn_unit(name, x, y)
                         idx = active_unit['index']
                         if cards_queue:
                             current_cards[idx] = cards_queue.pop(0)
