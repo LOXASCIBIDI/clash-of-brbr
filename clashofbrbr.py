@@ -13,7 +13,7 @@ window = pygame.display.set_mode((1000, 1000))
 clock = pygame.time.Clock()
 back = (200, 255, 255)
 pygame.mixer.init()
-
+y = 1
 menu_music = "mp3menu.mp3"
 battle_music = "mp3battle.mp3"
 overtime_music = 'mp3overtime.mp3'
@@ -68,25 +68,36 @@ class Picture:
             hp_text = font.render(str(self.hp), True, (255, 0, 0))
             window.blit(hp_text, (self.rect.centerx - 20, self.rect.y - 20))
             font = pygame.font.SysFont("Arial", 20)
-            hp_text = font.render(str(self.hp), True, (255, 0, 0))
-            window.blit(hp_text, (self.rect.centerx - 20, self.rect.y - 20))
 class Tower:
-    def __init__(self, x, y, width, height, color, hp=5000):
+    def __init__(self, x, y, width, height, color, hp=1000, image_file=None, id=None):
         self.rect = pygame.Rect(x, y, width, height)
         self.color = color
         self.hp = hp
+        self.id = id
         self.alive = True
+        if image_file:
+            self.image = pygame.image.load(image_file)
+            self.image = pygame.transform.scale(self.image, (width, height))
+        else:
+            self.image = None
 
     def draw(self):
         if self.alive:
-            pygame.draw.rect(window, self.color, self.rect)
+            if self.image:
+                window.blit(self.image, self.rect.topleft)
+            else:
+                pygame.draw.rect(window, self.color, self.rect)
 
+            # Рисуем HP над башней
+            font = pygame.font.SysFont("Arial", 20)
+            hp_text = font.render(str(self.hp), True, (255, 0, 0))
+            window.blit(hp_text, (self.rect.centerx - hp_text.get_width()//2, self.rect.y - 25))
 class Unit:
     def __init__(self, name, image_file, x, y, width, height, hp, damage, speed, attack_speed, attack_range=120):
         self.name = name
         self.image = pygame.image.load(image_file)
         self.image = pygame.transform.scale(self.image, (width, height))
-        self.rect = pygame.Rect(x, y, width * 0.5, height * 0.5)
+        self.rect = pygame.Rect(x, y, width, height)
         self.rect.center = (x, y)
         self.hp = hp
         self.damage = damage
@@ -96,43 +107,45 @@ class Unit:
         self.alive = True
         self.attack_range = attack_range
 
-    def move_towards(self, target_rect):
-        if not self.alive:
+    def move_towards(self, target):
+        if not self.alive or not target.alive:
             return
 
-        dx = target_rect.centerx - self.rect.centerx
-        dy = target_rect.centery - self.rect.centery
+        dx = target.rect.centerx - self.rect.centerx
+        dy = target.rect.centery - self.rect.centery
         distance = math.hypot(dx, dy)
 
         if distance > 0:
             move_x = int(self.speed * dx / distance)
             move_y = int(self.speed * dy / distance)
-
             new_rect = self.rect.move(move_x, move_y)
 
-            blocked = False
             for other in spawned_units:
-                if other != self and other.alive:
-                    if new_rect.colliderect(other.rect):
-                        blocked = True
-                        break
+                if other != self and other.alive and new_rect.colliderect(other.rect):
+                    # сдвигаем вбок
+                    move_x += randint(-2, 2)
+                    move_y += randint(-2, 2)
+                    new_rect = self.rect.move(move_x, move_y)
 
-            if not blocked:
-                self.rect = new_rect
+            self.rect = new_rect
     def attack(self, target):
-        if time.time() - self.last_attack < self.attack_speed:
+        if not self.alive or not target.alive:
             return
 
-        self.last_attack = time.time()
+        # расстояние от центра юнита до центра башни
+        dx = target.rect.centerx - self.rect.centerx
+        dy = target.rect.centery - self.rect.centery
+        distance = math.hypot(dx, dy)
 
-        target.hp -= self.damage
-        if target.hp <= 0:
-            target.hp = 0
-            target.alive = False
+        if distance <= getattr(self, "attack_range", 120):
+            if time.time() - self.last_attack < self.attack_speed:
+                return
 
-            if client_socket:
-                msg = f"DESTROY_TOWER {target.rect.x} {target.rect.y}"
-                client_socket.send(msg.encode())
+            self.last_attack = time.time()
+            target.hp -= self.damage
+            if target.hp <= 0:
+                target.hp = 0
+                target.alive = False
 
     def draw(self):
         if self.alive:
@@ -177,7 +190,7 @@ prices = {
     "konys.jpg": 3
 }
 card_descriptions = {
-    "brewmaster": "пивний лев с тремя медведями, мой любимый.",
+    "brewmaster.png": "пивний лев с тремя медведями, мой любимый.",
     "loxa.jpg": "Описание Лёхи\n\n лоха очень толстый и сильный.",
     "ykrgap.jpg": "Описание Юкргапа\n\n мало здоровя но неймоверная скорость атаки.",
     "super_busa.jpg": "Описание Бусы\n\n ультра быстрая бабушка которая купила крем для коленей.",
@@ -194,14 +207,15 @@ show_description = None
 selected = []
 max_selected = 8
 
-tower_enemy = Tower(450, 50, 100, 150, (255, 60, 60))
-tower_my = Tower(450, 800, 100, 150, (70, 120, 255))
-
+tower_my = Tower(450, 800, 100, 150, (70, 120, 255), hp=400, image_file='mycorol.png', id="tower_my_center" )
+tower_enemy = Tower(450, 50, 100, 150, (255, 60, 60), hp=400, image_file='enemycorol.png', id="tower_enemy_center")
 arena = Picture('arena.jpg', -150, -150, 1300, 1300)
-enemytl = Picture('enemytaver.png', 240, 280, 100, 70)
-enemytr = Picture('enemytaver.png', 660, 280, 100, 70)
-mytl = Picture('mytaver.png', 240, 660, 100, 70)
-mytr = Picture('mytaver.png', 670, 660, 100, 70)
+mytl = Tower(240, 660, 100, 70, (70, 120, 255), hp=200, image_file='mytaver.png', id="my_tl")
+mytr = Tower(670, 660, 100, 70, (70, 120, 255), hp=200, image_file='mytaver.png', id="my_tr")
+enemytl = Tower(240, 280, 100, 70, (255, 60, 60), hp=200, image_file='enemytaver.png', id="enemy_tl")
+enemytr = Tower(660, 280, 100, 70, (255, 60, 60), hp=200, image_file='enemytaver.png', id="enemy_tr")
+
+
 enemyc = Picture('enemycorol.png', 435, 200, 130, 130)
 myc = Picture('mycorol.png', 435, 650, 130, 130)
 pula1 = Picture('pula-removebg-preview.png', 240, 280, 40, 40)
@@ -255,11 +269,19 @@ def listen_server():
                 x = int(parts[2])
                 y = int(parts[3])
                 net_queue.put(("SPAWN", name, x, y))
+            elif parts[0] == "TOWER_HP":
+                tower_id = parts[1]
+                hp = int(parts[2])
 
+                for t in enemy_targets + my_targets:
+                    if t.id == tower_id:
+                        t.hp = hp
             elif parts[0] == "DESTROY_TOWER":
-                x = int(parts[1])
-                y = int(parts[2])
-                net_queue.put(("DESTROY_TOWER", x, y))
+                tower_name = parts[1]  # берем имя из сети
+
+                for t in enemy_targets + my_targets:
+                    if getattr(t, "name", None) == tower_name:
+                        t.alive = False
 
         except Exception as e:
             print("Ошибка сети:", e)
@@ -276,7 +298,7 @@ def draw_description(card):
     font_text = pygame.font.SysFont("Verdana", 30)
 
     title = font_title.render(card.image_name, True, (255,255,255))
-    window.blit(title,(6000,7000))
+    window.blit(title,(200,100))
 
     text = card_descriptions.get(card.image_name,"пивний лев с тремя медведями, мой любимый.")
 
@@ -350,10 +372,9 @@ def spawn_unit(name, x, y, enemy=False):
 def get_closest_target(unit, targets):
     alive_targets = []
     for t in targets:
-        if hasattr(t, "alive"):
-            if t.alive:
-                alive_targets.append(t)
-        else:
+        if hasattr(t, "alive") and t.alive:
+            alive_targets.append(t)
+        elif not hasattr(t, "alive"):
             alive_targets.append(t)
     if not alive_targets:
         return None
@@ -363,6 +384,13 @@ def get_closest_target(unit, targets):
     return closest
 def connect_to_server():
     global arena_mode, client_socket, connecting, battle_start_time, overtime
+    global client_socket
+
+    if client_socket:
+        try:
+            client_socket.close()
+        except:
+            pass
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(("127.0.0.1", 5555))
@@ -468,7 +496,7 @@ def play_music(track):
     if current_music != track:
         pygame.mixer.music.stop()
         pygame.mixer.music.load(track)
-        pygame.mixer.music.play(-2)
+        pygame.mixer.music.play(-1)
         current_music = track
 while running:
     while not net_queue.empty():
@@ -477,11 +505,13 @@ while running:
         if cmd[0] == "SPAWN":
             spawn_unit(cmd[1], cmd[2], cmd[3], enemy=True)
 
-        elif cmd[0] == "DESTROY_TOWER":
-            x, y = cmd[1], cmd[2]
-            for t in enemy_targets:
-                if t.rect.x == x and t.rect.y == y:
+        if cmd[0] == "DESTROY_TOWER":
+            tower_id = cmd[1]
+
+            for t in enemy_targets + my_targets:
+                if t.id == tower_id:
                     t.alive = False
+                    break
     if not loading_done:
         menushca(5)
         loading_done = True
@@ -585,8 +615,7 @@ while running:
     if arena_mode:
         regen_time = 3
         if overtime:
-            if overtime:
-                play_music(overtime_music)
+            play_music(overtime_music)
             regen_time = 1
         if time.time() - last_elixir_time >= regen_time:
             if elixir < max_elixir:
@@ -629,23 +658,24 @@ while running:
             continue
 
         if unit.name.startswith("enemy"):
-            possible_targets = my_units + my_targets
+            possible_targets = my_units + [t for t in my_targets if t.alive]
         else:
-            possible_targets = enemy_units + enemy_targets
+            possible_targets = enemy_units + [t for t in enemy_targets if t.alive]
 
+        target = get_closest_target(unit, possible_targets)
         target = get_closest_target(unit, possible_targets)
         if target is None:
             continue
-
-        unit.move_towards(target.rect)
-
+        unit.move_towards(target)
         distance = math.hypot(
-            unit.rect.centerx - target.rect.centerx,
-            unit.rect.centery - target.rect.centery
-        )
-
+                unit.rect.centerx - target.rect.centerx,
+                unit.rect.centery - target.rect.centery,
+            )
         if distance <= unit.attack_range:
             unit.attack(target)
+        else:
+
+            pass
     enemy_all_dead = True
     for t in enemy_targets:
         if hasattr(t, "alive"):
@@ -666,7 +696,9 @@ while running:
         font = pygame.font.SysFont("Verdana", 80)
         text = font.render("Ты проиграл!", True, (255, 0, 0))
         window.blit(text, (220, 400))
-        time.sleep(3)
+        end_time = time.time() + 3
+        while time.time() < end_time:
+            pygame.display.update()
 
         spawned_units.clear()
         elixir = 6

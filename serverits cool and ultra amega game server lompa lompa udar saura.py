@@ -8,9 +8,11 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 server.listen()
 
-clients = []
-
 print("сервер запущен")
+
+clients = []
+lock = threading.Lock()
+
 
 def broadcast(msg, sender):
     for c in clients:
@@ -24,13 +26,22 @@ def broadcast(msg, sender):
 def handle_client(conn, addr):
     global clients
 
-    print("игрок подключился:", addr)
-    clients.append(conn)
+    print("подключился:", addr)
 
-    if len(clients) == 2:
-        print("найден матч")
-        for c in clients:
-            c.send("FOUND".encode())
+    with lock:
+        if len(clients) >= 2:
+            conn.close()
+            return
+
+        clients.append(conn)
+
+        if len(clients) == 2:
+            print("матч найден")
+            for c in clients:
+                try:
+                    c.send("FOUND".encode())
+                except:
+                    pass
 
     while True:
         try:
@@ -39,25 +50,27 @@ def handle_client(conn, addr):
             if not data:
                 break
 
-            print("NET:", data.decode())
-
             broadcast(data, conn)
 
         except:
             break
 
-    print("игрок отключился:", addr)
+    print("отключился:", addr)
 
-    if conn in clients:
-        clients.remove(conn)
+    with lock:
+        if conn in clients:
+            clients.remove(conn)
+
+        for c in clients:
+            try:
+                c.send("OPPONENT_LEFT".encode())
+                c.close()
+            except:
+                pass
+
+        clients.clear()
 
     conn.close()
-
-    if len(clients) == 1:
-        try:
-            clients[0].send("OPPONENT_LEFT".encode())
-        except:
-            pass
 
 
 while True:
