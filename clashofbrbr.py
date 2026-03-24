@@ -781,7 +781,10 @@ while running:
 
         font = pygame.font.SysFont("Verdana", 60)
         text = font.render("Музыка", True, (0, 0, 0))
-        window.blit(text, (350, 300))
+        window.blit(text, (370, 300))
+        font = pygame.font.SysFont("Verdana", 25)
+        text = font.render("суть игры сломать две башни и дом противника чтоб оставить не с чем", True, (0, 0, 0))
+        window.blit(text, (40, 700))
 
         color = (0, 255, 0) if music_on else (255, 0, 0)
         pygame.draw.circle(window, color, (500, 550), 50)
