@@ -393,7 +393,7 @@ def connect_to_server():
             pass
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect(("127.0.0.1", 5555))
+        client_socket.connect(("192.168.1.144", 5555))
         print("Подключение к серверу...")
 
         msg = client_socket.recv(1024).decode()
