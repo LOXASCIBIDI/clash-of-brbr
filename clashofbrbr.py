@@ -214,7 +214,8 @@ mytl = Tower(240, 660, 100, 70, (70, 120, 255), hp=200, image_file='mytaver.png'
 mytr = Tower(670, 660, 100, 70, (70, 120, 255), hp=200, image_file='mytaver.png', id="my_tr")
 enemytl = Tower(240, 280, 100, 70, (255, 60, 60), hp=200, image_file='enemytaver.png', id="enemy_tl")
 enemytr = Tower(660, 280, 100, 70, (255, 60, 60), hp=200, image_file='enemytaver.png', id="enemy_tr")
-
+tower_enemy.rect.center = (500, 125)
+tower_my.rect.center = (500, 875)
 
 enemyc = Picture('enemycorol.png', 435, 200, 130, 130)
 myc = Picture('mycorol.png', 435, 650, 130, 130)
@@ -705,7 +706,8 @@ while running:
 
         tower_enemy.hp = 1250
         tower_enemy.alive = True
-        tower_enemy.rect.topleft = (450, 50)
+        tower_enemy.rect.center = (500, 125)
+        tower_my.rect.center = (500, 875)
 
         enemytl.hp = 725
         enemytl.alive = True
